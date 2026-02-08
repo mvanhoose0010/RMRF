@@ -127,12 +127,22 @@
         }
 
         .critical-rating {
-            padding: 8px 16px;
+            padding: 10px 20px;
             background: #ffd700;
             color: #333;
             border-radius: 20px;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 18px;
+        }
+
+        .binder-badge {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 18px;
+            white-space: nowrap;
         }
 
         .field-group {
@@ -1118,6 +1128,55 @@ FS-NCC-0632"
 
         let products = [];
 
+        // -------------------------
+        // BINDER DATA
+        // -------------------------
+        const binderRanges = [
+            { binder: 1, start: 78808378174, end: 78808391086 },
+            { binder: 2, start: 43780028254, end: 43780101432 },
+            { binder: 3, start: 78614547418, end: 78808345942 },
+            { binder: 4, start: 34870009320, end: 34870012308 },
+            { binder: 5, start: 11002535505, end: 11002537220 },
+            { binder: 6, start: 11004283211, end: 34870009312 },
+            { binder: 7, start: 43780026432, end: 43780028239 },
+            { binder: 8, start: 43780101440, end: 78614547418 },
+            { binder: 9, start: 11002537238, end: 11004254394 },
+            { binder: 10, start: 34870013413, end: 34872283048 },
+            { binder: 11, start: 34872331086, end: 41370138319 }
+        ];
+
+        const binderSingles = [
+            { binder: 12, number: 26102190142 },
+            { binder: 12, number: 34870009205 },
+            { binder: 13, number: 78808373266 }
+        ];
+
+        // -------------------------
+        // BINDER LOOKUP FUNCTION
+        // -------------------------
+        function findBinder(productNumber) {
+            const num = Number(productNumber);
+            if (isNaN(num)) return null;
+
+            let matches = [];
+
+            // Check standalone matches first
+            binderSingles.forEach(entry => {
+                if (entry.number === num) {
+                    matches.push({ binder: entry.binder, type: 'exact' });
+                }
+            });
+
+            // Check ranges
+            binderRanges.forEach(entry => {
+                if (num >= entry.start && num <= entry.end) {
+                    matches.push({ binder: entry.binder, type: 'range', start: entry.start, end: entry.end });
+                }
+            });
+
+            return matches.length > 0 ? matches : null;
+        }
+
         // Parse CSV
         function parseCSV(csv) {
             const lines = csv.split('\n');
@@ -1202,11 +1261,16 @@ FS-NCC-0632"
 
         // Create result card HTML
         function createResultCard(product) {
+            const binderInfo = findBinder(product['PRODUCT NUMBER']);
+            
             return `
                 <div class="result-card">
                     <div class="result-header">
                         <div class="product-number">${product['PRODUCT NUMBER']}</div>
-                        ${product['Critical Rating'] ? `<div class="critical-rating">Critical Rating: ${product['Critical Rating']}</div>` : ''}
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            ${product['Critical Rating'] ? `<div class="critical-rating">Critical Rating: ${product['Critical Rating']}</div>` : ''}
+                            ${binderInfo ? binderInfo.map(b => `<div class="binder-badge">📁 Binder ${b.binder}</div>`).join('') : ''}
+                        </div>
                     </div>
 
                     ${product['PRODUCT DESCRIPTION'] ? `
@@ -1220,8 +1284,10 @@ FS-NCC-0632"
                         <div class="field-group">
                             <div class="field-label">Form</div>
                             <div class="field-value">
-                                ${product['Form']}
-                                ${product['Form Hyperlink'] ? `<br><a href="${product['Form Hyperlink']}" target="_blank">View Form ↗</a>` : ''}
+                                ${product['Form Hyperlink'] 
+                                    ? `<a href="${product['Form Hyperlink']}" target="_blank">${product['Form'] || 'View Form'} ↗</a>` 
+                                    : product['Form']
+                                }
                             </div>
                         </div>
                     ` : ''}
